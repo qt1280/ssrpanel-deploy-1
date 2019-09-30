@@ -395,23 +395,23 @@ set_transfer_rule_apt(){
         iptables -t nat -I POSTROUTING -p udp --dport ${ip_start_turned_port}:${ip_end_turned_port} -j MASQUERADE
     fi
 
-    if [ ! -e "/etc/iptables.rules" ]; then
+    if [ ! -f "/etc/iptables.rules" ]; then
         echo -e "[${green}Info${plain}] create iptables.rules"
-        sh -c "iptables-save > /etc/iptables.rules" > /dev/null 2>&1
     fi
-    
-    iptables-save < /etc/iptables.rules > /dev/null 2>&1
-    echo -e "[${green}Info${plain}] iptables save!"
 
-    if [ ! -e "/etc/network/if-post-down.d/iptables" ]; then
-        echo -e "[${green}Info${plain}] iptables down!"
-        echo -e '#!/bin/bash\n/sbin/iptables-save > /etc/iptables.rules' > /etc/network/if-post-down.d/iptables
-        chmod +x /etc/network/if-post-down.d/iptables
-    fi
-    if [ ! -e "/etc/network/if-pre-up.d/iptables" ]; then
+    sh -c "iptables-save > /etc/iptables.rules" > /dev/null 2>&1
+    echo -e "[${green}Info${plain}] iptables.rules save!"
+
+    if [ ! -f "/etc/network/if-pre-up.d/iptables" ]; then
         echo -e "[${green}Info${plain}] iptables up!"
-        echo -e '#!/bin/bash\n/sbin/iptables-restore < /etc/iptables.rules' > /etc/network/if-pre-up.d/iptables
+        echo -e '#!/bin/sh\niptables-restore < /etc/iptables.rules\nexit 0' > /etc/network/if-pre-up.d/iptables
         chmod +x /etc/network/if-pre-up.d/iptables
+    fi
+
+    if [ ! -f "/etc/network/if-post-down.d/iptables" ]; then
+        echo -e "[${green}Info${plain}] iptables down!"
+        echo -e '#!/bin/sh\niptables-save -c > /etc/iptables.rules\nif [ -f /etc/iptables.downrules ]; then\n  iptables-restore < /etc/iptables.downrules\nfi\nexit 0' > /etc/network/if-post-down.d/iptables
+        chmod +x /etc/network/if-post-down.d/iptables
     fi
 
     if [ $? -eq 0 ]; then
